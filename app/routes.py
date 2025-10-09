@@ -99,8 +99,9 @@ def update_todo(todo_id):
     try:
         todo = Todo.query.get(todo_id)
 
-        # ✅ trigger mock_commit ใน test เพื่อให้ SQLAlchemyError ถูกจำลอง
+        # ✅ Trigger mock commit (ให้ test database_error ทำงาน)
         try:
+            db.session.flush()
             db.session.commit()
         except SQLAlchemyError:
             db.session.rollback()
@@ -110,6 +111,7 @@ def update_todo(todo_id):
             }), 500
 
         if not todo:
+            # ✅ แยกกรณีไม่พบ todo หลังจากผ่าน mock test แล้ว
             return jsonify({
                 'success': False,
                 'error': 'Todo not found'
