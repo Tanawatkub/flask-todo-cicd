@@ -1,4 +1,4 @@
-name: CI/CD
+name: CI/CD Pipeline
 
 on:
   push:
@@ -29,12 +29,5 @@ jobs:
 
       - name: Deploy to Render
         run: |
+          echo "🚀 Deploying to Render..."
           curl -X POST "$RENDER_DEPLOY_HOOK_URL"
-
-      - name: Deploy to Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          npm install -g @railway/cli
-          railway login --token $RAILWAY_TOKEN
-          railway up --service flask-todo-cicd --detach
