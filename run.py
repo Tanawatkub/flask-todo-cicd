@@ -1,8 +1,6 @@
 from app import create_app
-import os
 
-app = create_app(os.getenv('FLASK_ENV', 'development'))
+app = create_app()
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5001))  # ← ใช้ PORT จาก Render หรือ 5001 เป็นค่า default
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)

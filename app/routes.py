@@ -42,23 +42,17 @@ def get_todos():
 @api.route('/todos/<int:todo_id>', methods=['GET'])
 def get_todo(todo_id):
     """Get a specific todo item"""
-    try:
-        todo = Todo.query.get(todo_id)
-        if not todo:
-            return jsonify({
-                'success': False,
-                'error': 'Todo not found'
-            }), 404
-
-        return jsonify({
-            'success': True,
-            'data': todo.to_dict()
-        }), 200
-    except SQLAlchemyError:
+    todo = Todo.query.get(todo_id)
+    if not todo:
         return jsonify({
             'success': False,
-            'error': 'Database query failed'
-        }), 500
+            'error': 'Todo not found'
+        }), 404
+
+    return jsonify({
+        'success': True,
+        'data': todo.to_dict()
+    }), 200
 
 
 @api.route('/todos', methods=['POST'])
@@ -96,27 +90,16 @@ def create_todo():
 @api.route('/todos/<int:todo_id>', methods=['PUT'])
 def update_todo(todo_id):
     """Update an existing todo item"""
-    data = request.get_json() or {}
+    todo = Todo.query.get(todo_id)
+    if not todo:
+        return jsonify({
+            'success': False,
+            'error': 'Todo not found'
+        }), 404
+
+    data = request.get_json()
 
     try:
-        # ✅ ถ้า query DB แล้วเกิด error
-        try:
-            todo = Todo.query.get(todo_id)
-        except SQLAlchemyError:
-            db.session.rollback()
-            return jsonify({
-                'success': False,
-                'error': 'Database failure while fetching todo'
-            }), 500
-
-        # ✅ ถ้าไม่เจอ todo
-        if not todo:
-            return jsonify({
-                'success': False,
-                'error': 'Todo not found'
-            }), 404
-
-        # ✅ ปรับปรุงข้อมูล
         if 'title' in data:
             todo.title = data['title']
         if 'description' in data:
@@ -124,41 +107,32 @@ def update_todo(todo_id):
         if 'completed' in data:
             todo.completed = data['completed']
 
-        # ✅ commit error
-        try:
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            return jsonify({
-                'success': False,
-                'error': 'Database error during update'
-            }), 500
+        db.session.commit()
 
         return jsonify({
             'success': True,
             'data': todo.to_dict(),
             'message': 'Todo updated successfully'
         }), 200
-
-    except Exception:
+    except SQLAlchemyError:
         db.session.rollback()
         return jsonify({
             'success': False,
-            'error': 'Unexpected server error'
+            'error': 'Failed to update todo'
         }), 500
 
 
 @api.route('/todos/<int:todo_id>', methods=['DELETE'])
 def delete_todo(todo_id):
     """Delete a todo item"""
-    try:
-        todo = Todo.query.get(todo_id)
-        if not todo:
-            return jsonify({
-                'success': False,
-                'error': 'Todo not found'
-            }), 404
+    todo = Todo.query.get(todo_id)
+    if not todo:
+        return jsonify({
+            'success': False,
+            'error': 'Todo not found'
+        }), 404
 
+    try:
         db.session.delete(todo)
         db.session.commit()
 
