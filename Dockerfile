@@ -1,5 +1,5 @@
 # ---------- Build stage ----------
-    FROM python:3.11-slim as builder
+    FROM python:3.11-slim AS builder
 
     # Set working directory
     WORKDIR /app
@@ -10,7 +10,7 @@
         postgresql-client \
         && rm -rf /var/lib/apt/lists/*
     
-    # Copy requirements first for caching
+    # Copy requirements first (for Docker layer caching)
     COPY requirements.txt .
     
     # Install dependencies into local user path
@@ -27,12 +27,12 @@
     # Set working directory
     WORKDIR /app
     
-    # Install runtime dependencies
+    # Install minimal runtime dependencies
     RUN apt-get update && apt-get install -y --no-install-recommends \
         postgresql-client \
         && rm -rf /var/lib/apt/lists/*
     
-    # Copy installed Python packages from builder stage
+    # Copy installed packages from builder stage
     COPY --from=builder /root/.local /home/appuser/.local
     
     # Copy application code
@@ -47,13 +47,13 @@
     # Switch to non-root user
     USER appuser
     
-    # Expose the app port
+    # Expose port
     EXPOSE 5000
     
-    # Healthcheck (ตรวจสอบ endpoint)
+    # Healthcheck
     HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-      CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
+      CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')" || exit 1
     
-    # Run with gunicorn (path สมบูรณ์)
-    CMD ["/home/appuser/.local/bin/gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "run:app"]
+    # Start app using Gunicorn
+    CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "run:app"]
     
