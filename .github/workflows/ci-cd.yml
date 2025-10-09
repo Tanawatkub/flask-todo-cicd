@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Flask Todo CI/CD Pipeline
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -32,11 +32,14 @@ jobs:
           flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 app --count --exit-zero --max-complexity=10 --max-line-length=79 --statistics
 
-      - name: Run tests
+      - name: Run tests with coverage
         run: |
-          pytest --disable-warnings --maxfail=1 --cov=app --cov-report=term-missing --cov-fail-under=90
+          pytest --disable-warnings --maxfail=1 -q --cov=app --cov-report=term-missing --cov-fail-under=90
 
       - name: Deploy to Render
         if: github.ref == 'refs/heads/main' && success()
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
+          echo "Deploying to Render..."
           curl -X POST "$RENDER_DEPLOY_HOOK_URL"
