@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify
 from app.models import db, Todo
 from sqlalchemy.exc import SQLAlchemyError
- 
- 
+
+
 api = Blueprint('api', __name__)
- 
- 
+
+
 @api.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint for monitoring"""
@@ -21,8 +21,8 @@ def health_check():
             'database': 'disconnected',
             'error': 'Database connection failed'
         }), 503
- 
- 
+
+
 @api.route('/todos', methods=['GET'])
 def get_todos():
     """Get all todo items"""
@@ -38,8 +38,8 @@ def get_todos():
             'success': False,
             'error': 'Database error occurred'
         }), 500
- 
- 
+
+
 @api.route('/todos/<int:todo_id>', methods=['GET'])
 def get_todo(todo_id):
     """Get a specific todo item"""
@@ -49,24 +49,24 @@ def get_todo(todo_id):
             'success': False,
             'error': 'Todo not found'
         }), 404
- 
+
     return jsonify({
         'success': True,
         'data': todo.to_dict()
     }), 200
- 
- 
+
+
 @api.route('/todos', methods=['POST'])
 def create_todo():
     """Create a new todo item"""
     data = request.get_json()
- 
+
     if not data or not data.get('title'):
         return jsonify({
             'success': False,
             'error': 'Title is required'
         }), 400
- 
+
     try:
         todo = Todo(
             title=data['title'],
@@ -74,7 +74,7 @@ def create_todo():
         )
         db.session.add(todo)
         db.session.commit()
- 
+
         return jsonify({
             'success': True,
             'data': todo.to_dict(),
@@ -86,8 +86,8 @@ def create_todo():
             'success': False,
             'error': 'Failed to create todo'
         }), 500
- 
- 
+
+
 @api.route('/todos/<int:todo_id>', methods=['PUT'])
 def update_todo(todo_id):
     """Update an existing todo item"""
@@ -97,9 +97,9 @@ def update_todo(todo_id):
             'success': False,
             'error': 'Todo not found'
         }), 404
- 
+
     data = request.get_json()
- 
+
     try:
         if 'title' in data:
             todo.title = data['title']
@@ -107,9 +107,9 @@ def update_todo(todo_id):
             todo.description = data['description']
         if 'completed' in data:
             todo.completed = data['completed']
- 
+
         db.session.commit()
- 
+
         return jsonify({
             'success': True,
             'data': todo.to_dict(),
@@ -121,8 +121,8 @@ def update_todo(todo_id):
             'success': False,
             'error': 'Failed to update todo'
         }), 500
- 
- 
+
+
 @api.route('/todos/<int:todo_id>', methods=['DELETE'])
 def delete_todo(todo_id):
     """Delete a todo item"""
@@ -132,11 +132,11 @@ def delete_todo(todo_id):
             'success': False,
             'error': 'Todo not found'
         }), 404
- 
+
     try:
         db.session.delete(todo)
         db.session.commit()
- 
+
         return jsonify({
             'success': True,
             'message': 'Todo deleted successfully'
