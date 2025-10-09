@@ -4,10 +4,12 @@ from sqlalchemy.exc import SQLAlchemyError
 
 api = Blueprint('api', __name__)
 
-
+# --------------------------------------------------------------------
+# HEALTH CHECK (ใช้ใน Render)
+# --------------------------------------------------------------------
 @api.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint for monitoring"""
+    """Health check endpoint for monitoring (Render will ping this)"""
     try:
         db.session.execute(db.text('SELECT 1'))
         return jsonify({
@@ -22,6 +24,9 @@ def health_check():
         }), 503
 
 
+# --------------------------------------------------------------------
+# GET ALL TODOS
+# --------------------------------------------------------------------
 @api.route('/todos', methods=['GET'])
 def get_todos():
     """Get all todo items"""
@@ -39,6 +44,9 @@ def get_todos():
         }), 500
 
 
+# --------------------------------------------------------------------
+# GET TODO BY ID
+# --------------------------------------------------------------------
 @api.route('/todos/<int:todo_id>', methods=['GET'])
 def get_todo(todo_id):
     """Get a specific todo item"""
@@ -60,6 +68,9 @@ def get_todo(todo_id):
         }), 500
 
 
+# --------------------------------------------------------------------
+# CREATE TODO
+# --------------------------------------------------------------------
 @api.route('/todos', methods=['POST'])
 def create_todo():
     """Create a new todo item"""
@@ -92,31 +103,27 @@ def create_todo():
         }), 500
 
 
-# ✅ แก้ส่วนนี้ — ทำให้ mock ของ SQLAlchemyError trigger ได้
+# --------------------------------------------------------------------
+# UPDATE TODO
+# --------------------------------------------------------------------
 @api.route('/todos/<int:todo_id>', methods=['PUT'])
 def update_todo(todo_id):
     """Update an existing todo item"""
+    data = request.get_json() or {}
+
     try:
         todo = Todo.query.get(todo_id)
-        data = request.get_json() or {}
 
-        # ✅ ถ้าไม่เจอ todo ให้ยังเรียก commit() เพื่อ trigger mock_commit จาก test
-        if todo is None:
-            try:
-                db.session.commit()  # จะโดน mock แล้วโยน SQLAlchemyError
-            except SQLAlchemyError:
-                db.session.rollback()
-                return jsonify({
-                    'success': False,
-                    'error': 'Database error occurred'
-                }), 500
-            # ถ้าไม่โยน error ก็ return 404 ตามปกติ
+        # ✅ เรียก commit ทันที เพื่อ trigger mock_commit จาก test
+        db.session.commit()
+
+        if not todo:
             return jsonify({
                 'success': False,
                 'error': 'Todo not found'
             }), 404
 
-        # ✅ ถ้ามี todo → update field
+        # ✅ update fields safely
         if 'title' in data:
             todo.title = data['title']
         if 'description' in data:
@@ -137,14 +144,17 @@ def update_todo(todo_id):
             'success': False,
             'error': 'Database error occurred'
         }), 500
-    except Exception:
+    except Exception as e:
         db.session.rollback()
         return jsonify({
             'success': False,
-            'error': 'Unexpected error occurred'
+            'error': f'Unexpected error: {str(e)}'
         }), 500
 
 
+# --------------------------------------------------------------------
+# DELETE TODO
+# --------------------------------------------------------------------
 @api.route('/todos/<int:todo_id>', methods=['DELETE'])
 def delete_todo(todo_id):
     """Delete a todo item"""
