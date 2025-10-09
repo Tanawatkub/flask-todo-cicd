@@ -39,5 +39,5 @@
       CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
     
     # ✅ ใช้ gunicorn จาก PATH (ไม่ระบุ .venv)
-    CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "run:app"]
+    CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "app:app"]
     
