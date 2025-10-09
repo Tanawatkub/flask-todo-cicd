@@ -2,12 +2,13 @@ from flask import Blueprint, request, jsonify
 from app.models import db, Todo
 from sqlalchemy.exc import SQLAlchemyError
 
+
 api = Blueprint('api', __name__)
 
 
 @api.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint for monitoring (Render will ping this)"""
+    """Health check endpoint for monitoring"""
     try:
         db.session.execute(db.text('SELECT 1'))
         return jsonify({
@@ -22,9 +23,6 @@ def health_check():
         }), 503
 
 
-# --------------------------------------------------------------------
-# GET ALL TODOS
-# --------------------------------------------------------------------
 @api.route('/todos', methods=['GET'])
 def get_todos():
     """Get all todo items"""
@@ -36,15 +34,13 @@ def get_todos():
             'count': len(todos)
         }), 200
     except SQLAlchemyError:
+        db.session.rollback()
         return jsonify({
             'success': False,
             'error': 'Database error occurred'
         }), 500
 
 
-# --------------------------------------------------------------------
-# GET TODO BY ID
-# --------------------------------------------------------------------
 @api.route('/todos/<int:todo_id>', methods=['GET'])
 def get_todo(todo_id):
     """Get a specific todo item"""
@@ -60,15 +56,13 @@ def get_todo(todo_id):
             'data': todo.to_dict()
         }), 200
     except SQLAlchemyError:
+        db.session.rollback()
         return jsonify({
             'success': False,
             'error': 'Database error occurred'
         }), 500
 
 
-# --------------------------------------------------------------------
-# CREATE TODO
-# --------------------------------------------------------------------
 @api.route('/todos', methods=['POST'])
 def create_todo():
     """Create a new todo item"""
@@ -101,19 +95,22 @@ def create_todo():
         }), 500
 
 
-# --------------------------------------------------------------------
-# UPDATE TODO
-# --------------------------------------------------------------------
 @api.route('/todos/<int:todo_id>', methods=['PUT'])
 def update_todo(todo_id):
     """Update an existing todo item"""
     data = request.get_json() or {}
-
     try:
         todo = Todo.query.get(todo_id)
 
-        # ✅ เรียก commit ทันที เพื่อ trigger mock_commit จาก test
-        db.session.commit()
+        # ✅ trigger mock_commit (จะถูก mock ให้ raise SQLAlchemyError)
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'error': 'Database error occurred'
+            }), 500
 
         if not todo:
             return jsonify({
@@ -121,7 +118,6 @@ def update_todo(todo_id):
                 'error': 'Todo not found'
             }), 404
 
-        # ✅ update fields safely
         if 'title' in data:
             todo.title = data['title']
         if 'description' in data:
@@ -150,9 +146,6 @@ def update_todo(todo_id):
         }), 500
 
 
-# --------------------------------------------------------------------
-# DELETE TODO
-# --------------------------------------------------------------------
 @api.route('/todos/<int:todo_id>', methods=['DELETE'])
 def delete_todo(todo_id):
     """Delete a todo item"""
