@@ -4,9 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 api = Blueprint('api', __name__)
 
-# --------------------------------------------------------------------
-# HEALTH CHECK (ใช้ใน Render)
-# --------------------------------------------------------------------
+
 @api.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint for monitoring (Render will ping this)"""
