@@ -96,16 +96,27 @@ def create_todo():
 @api.route('/todos/<int:todo_id>', methods=['PUT'])
 def update_todo(todo_id):
     """Update an existing todo item"""
+    data = request.get_json() or {}
+
     try:
-        todo = Todo.query.get(todo_id)
+        # ✅ ถ้า query DB แล้วเกิด error
+        try:
+            todo = Todo.query.get(todo_id)
+        except SQLAlchemyError:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'error': 'Database failure while fetching todo'
+            }), 500
+
+        # ✅ ถ้าไม่เจอ todo
         if not todo:
             return jsonify({
                 'success': False,
                 'error': 'Todo not found'
             }), 404
 
-        data = request.get_json() or {}
-
+        # ✅ ปรับปรุงข้อมูล
         if 'title' in data:
             todo.title = data['title']
         if 'description' in data:
@@ -113,6 +124,7 @@ def update_todo(todo_id):
         if 'completed' in data:
             todo.completed = data['completed']
 
+        # ✅ commit error
         try:
             db.session.commit()
         except SQLAlchemyError:
@@ -128,11 +140,11 @@ def update_todo(todo_id):
             'message': 'Todo updated successfully'
         }), 200
 
-    except SQLAlchemyError:
+    except Exception:
         db.session.rollback()
         return jsonify({
             'success': False,
-            'error': 'Unexpected database error'
+            'error': 'Unexpected server error'
         }), 500
 
 
