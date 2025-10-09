@@ -146,4 +146,3 @@ def delete_todo(todo_id):
             'success': False,
             'error': 'Failed to delete todo'
         }), 500
-
