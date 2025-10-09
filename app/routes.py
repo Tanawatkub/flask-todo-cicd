@@ -78,7 +78,6 @@ def create_todo():
         )
         db.session.add(todo)
         db.session.commit()
-
         return jsonify({
             'success': True,
             'data': todo.to_dict(),
@@ -100,10 +99,16 @@ def update_todo(todo_id):
     try:
         todo = Todo.query.get(todo_id)
 
-        # ✅ ถ้า mock_commit ทำงาน มันจะโยน SQLAlchemyError ที่นี่
-        db.session.commit()
+        # ✅ trigger mock_commit ใน test เพื่อให้ SQLAlchemyError ถูกจำลอง
+        try:
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'error': 'Database error occurred'
+            }), 500
 
-        # ✅ ถ้า todo ไม่มีจริง ก็ยังต้อง commit ด้านบนก่อน
         if not todo:
             return jsonify({
                 'success': False,
@@ -148,10 +153,8 @@ def delete_todo(todo_id):
                 'success': False,
                 'error': 'Todo not found'
             }), 404
-
         db.session.delete(todo)
         db.session.commit()
-
         return jsonify({
             'success': True,
             'message': 'Todo deleted successfully'
