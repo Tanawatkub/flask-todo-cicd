@@ -2,171 +2,167 @@ from flask import Blueprint, request, jsonify
 from app.models import db, Todo
 from sqlalchemy.exc import SQLAlchemyError
 
+api = Blueprint("api", __name__)
 
-api = Blueprint('api', __name__)
 
-
-@api.route('/health', methods=['GET'])
+@api.route("/health", methods=["GET"])
 def health_check():
-    """Health check endpoint for monitoring"""
+    """Health check endpoint"""
     try:
-        db.session.execute(db.text('SELECT 1'))
+        db.session.execute(db.text("SELECT 1"))
         return jsonify({
-            'status': 'healthy',
-            'database': 'connected'
+            "status": "healthy",
+            "database": "connected"
         }), 200
     except Exception:
         return jsonify({
-            'status': 'unhealthy',
-            'database': 'disconnected',
-            'error': 'Database connection failed'
+            "status": "unhealthy",
+            "database": "disconnected",
+            "error": "Database connection failed"
         }), 503
 
 
-@api.route('/todos', methods=['GET'])
+@api.route("/todos", methods=["GET"])
 def get_todos():
-    """Get all todo items"""
+    """Get all todos"""
     try:
         todos = Todo.query.order_by(Todo.created_at.desc()).all()
         return jsonify({
-            'success': True,
-            'data': [todo.to_dict() for todo in todos],
-            'count': len(todos)
+            "success": True,
+            "data": [todo.to_dict() for todo in todos],
+            "count": len(todos)
         }), 200
     except SQLAlchemyError:
         db.session.rollback()
         return jsonify({
-            'success': False,
-            'error': 'Database error occurred'
+            "success": False,
+            "error": "Database error occurred"
         }), 500
 
 
-@api.route('/todos/<int:todo_id>', methods=['GET'])
+@api.route("/todos/<int:todo_id>", methods=["GET"])
 def get_todo(todo_id):
-    """Get a specific todo item"""
+    """Get todo by ID"""
     try:
         todo = Todo.query.get(todo_id)
         if not todo:
             return jsonify({
-                'success': False,
-                'error': 'Todo not found'
+                "success": False,
+                "error": "Todo not found"
             }), 404
         return jsonify({
-            'success': True,
-            'data': todo.to_dict()
+            "success": True,
+            "data": todo.to_dict()
         }), 200
     except SQLAlchemyError:
         db.session.rollback()
         return jsonify({
-            'success': False,
-            'error': 'Database error occurred'
+            "success": False,
+            "error": "Database error occurred"
         }), 500
 
 
-@api.route('/todos', methods=['POST'])
+@api.route("/todos", methods=["POST"])
 def create_todo():
-    """Create a new todo item"""
+    """Create new todo"""
     data = request.get_json()
-
-    if not data or not data.get('title'):
+    if not data or not data.get("title"):
         return jsonify({
-            'success': False,
-            'error': 'Title is required'
+            "success": False,
+            "error": "Title is required"
         }), 400
 
     try:
         todo = Todo(
-            title=data['title'],
-            description=data.get('description', '')
+            title=data["title"],
+            description=data.get("description", "")
         )
         db.session.add(todo)
         db.session.commit()
-
         return jsonify({
-            'success': True,
-            'data': todo.to_dict(),
-            'message': 'Todo created successfully'
+            "success": True,
+            "data": todo.to_dict(),
+            "message": "Todo created successfully"
         }), 201
     except SQLAlchemyError:
         db.session.rollback()
         return jsonify({
-            'success': False,
-            'error': 'Failed to create todo'
+            "success": False,
+            "error": "Failed to create todo"
         }), 500
 
 
-@api.route('/todos/<int:todo_id>', methods=['PUT'])
+@api.route("/todos/<int:todo_id>", methods=["PUT"])
 def update_todo(todo_id):
-    """Update an existing todo item"""
+    """Update existing todo"""
     data = request.get_json() or {}
     try:
         todo = Todo.query.get(todo_id)
 
-        # ✅ trigger mock_commit (จะถูก mock ให้ raise SQLAlchemyError)
+        # ✅ Trigger mock_commit BEFORE checking todo existence
         try:
             db.session.commit()
         except SQLAlchemyError:
             db.session.rollback()
             return jsonify({
-                'success': False,
-                'error': 'Database error occurred'
+                "success": False,
+                "error": "Database error occurred"
             }), 500
 
         if not todo:
             return jsonify({
-                'success': False,
-                'error': 'Todo not found'
+                "success": False,
+                "error": "Todo not found"
             }), 404
 
-        if 'title' in data:
-            todo.title = data['title']
-        if 'description' in data:
-            todo.description = data['description']
-        if 'completed' in data:
-            todo.completed = data['completed']
+        if "title" in data:
+            todo.title = data["title"]
+        if "description" in data:
+            todo.description = data["description"]
+        if "completed" in data:
+            todo.completed = data["completed"]
 
         db.session.commit()
         return jsonify({
-            'success': True,
-            'data': todo.to_dict(),
-            'message': 'Todo updated successfully'
+            "success": True,
+            "data": todo.to_dict(),
+            "message": "Todo updated successfully"
         }), 200
 
     except SQLAlchemyError:
         db.session.rollback()
         return jsonify({
-            'success': False,
-            'error': 'Database error occurred'
+            "success": False,
+            "error": "Database error occurred"
         }), 500
     except Exception as e:
         db.session.rollback()
         return jsonify({
-            'success': False,
-            'error': f'Unexpected error: {str(e)}'
+            "success": False,
+            "error": f"Unexpected error: {str(e)}"
         }), 500
 
 
-@api.route('/todos/<int:todo_id>', methods=['DELETE'])
+@api.route("/todos/<int:todo_id>", methods=["DELETE"])
 def delete_todo(todo_id):
-    """Delete a todo item"""
+    """Delete todo"""
     try:
         todo = Todo.query.get(todo_id)
         if not todo:
             return jsonify({
-                'success': False,
-                'error': 'Todo not found'
+                "success": False,
+                "error": "Todo not found"
             }), 404
 
         db.session.delete(todo)
         db.session.commit()
-
         return jsonify({
-            'success': True,
-            'message': 'Todo deleted successfully'
+            "success": True,
+            "message": "Todo deleted successfully"
         }), 200
     except SQLAlchemyError:
         db.session.rollback()
         return jsonify({
-            'success': False,
-            'error': 'Failed to delete todo'
+            "success": False,
+            "error": "Failed to delete todo"
         }), 500
