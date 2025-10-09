@@ -5,13 +5,16 @@ services:
     buildCommand: |
       pip install --upgrade pip
       pip install --no-cache-dir -r requirements.txt
-    startCommand: bash -c "/opt/render/project/src/.venv/bin/gunicorn --bind 0.0.0.0:$PORT run:app"
+
+    startCommand: |
+      # ใช้ path ของ gunicorn ที่แน่นอนใน Render
+      /opt/render/project/src/.venv/bin/gunicorn --bind 0.0.0.0:$PORT run:app
 
     envVars:
       - key: FLASK_ENV
         value: production
       - key: PYTHON_VERSION
-        value: 3.11.9
+        value: 3.13.4   # Render ใช้อันนี้ตอน build แล้ว
       - key: PORT
         value: 5000
       - key: DATABASE_URL
