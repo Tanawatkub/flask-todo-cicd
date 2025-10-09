@@ -42,17 +42,22 @@ def get_todos():
 @api.route('/todos/<int:todo_id>', methods=['GET'])
 def get_todo(todo_id):
     """Get a specific todo item"""
-    todo = Todo.query.get(todo_id)
-    if not todo:
+    try:
+        todo = Todo.query.get(todo_id)
+        if not todo:
+            return jsonify({
+                'success': False,
+                'error': 'Todo not found'
+            }), 404
+        return jsonify({
+            'success': True,
+            'data': todo.to_dict()
+        }), 200
+    except SQLAlchemyError:
         return jsonify({
             'success': False,
-            'error': 'Todo not found'
-        }), 404
-
-    return jsonify({
-        'success': True,
-        'data': todo.to_dict()
-    }), 200
+            'error': 'Database error occurred'
+        }), 500
 
 
 @api.route('/todos', methods=['POST'])
@@ -114,25 +119,31 @@ def update_todo(todo_id):
             'data': todo.to_dict(),
             'message': 'Todo updated successfully'
         }), 200
-    except SQLAlchemyError:
+    except SQLAlchemyError as e:
         db.session.rollback()
         return jsonify({
             'success': False,
-            'error': 'Failed to update todo'
+            'error': f'Database error: {str(e)}'
+        }), 500
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'Unexpected error: {str(e)}'
         }), 500
 
 
 @api.route('/todos/<int:todo_id>', methods=['DELETE'])
 def delete_todo(todo_id):
     """Delete a todo item"""
-    todo = Todo.query.get(todo_id)
-    if not todo:
-        return jsonify({
-            'success': False,
-            'error': 'Todo not found'
-        }), 404
-
     try:
+        todo = Todo.query.get(todo_id)
+        if not todo:
+            return jsonify({
+                'success': False,
+                'error': 'Todo not found'
+            }), 404
+
         db.session.delete(todo)
         db.session.commit()
 
