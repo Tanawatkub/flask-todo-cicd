@@ -3,14 +3,14 @@ services:
     name: flask-todo-cicd
     env: python
     buildCommand: pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
-    startCommand: /opt/render/project/src/.venv/bin/gunicorn --bind 0.0.0.0:$PORT run:app
+    startCommand: bash -c "/opt/render/project/src/.venv/bin/gunicorn --bind 0.0.0.0:$PORT run:app"
 
     envVars:
       - key: FLASK_ENV
         value: production
 
       - key: PYTHON_VERSION
-        value: 3.11.9
+        value: 3.11.9  # ✅ สำคัญ! บังคับใช้เวอร์ชันที่ gunicorn รันได้แน่นอน
 
       - key: PORT
         value: 5001
