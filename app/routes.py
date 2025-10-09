@@ -90,16 +90,16 @@ def create_todo():
 @api.route('/todos/<int:todo_id>', methods=['PUT'])
 def update_todo(todo_id):
     """Update an existing todo item"""
-    todo = Todo.query.get(todo_id)
-    if not todo:
-        return jsonify({
-            'success': False,
-            'error': 'Todo not found'
-        }), 404
-
-    data = request.get_json()
-
     try:
+        todo = Todo.query.get(todo_id)
+        if not todo:
+            return jsonify({
+                'success': False,
+                'error': 'Todo not found'
+            }), 404
+
+        data = request.get_json()
+
         if 'title' in data:
             todo.title = data['title']
         if 'description' in data:
@@ -146,4 +146,4 @@ def delete_todo(todo_id):
             'success': False,
             'error': 'Failed to delete todo'
         }), 500
-        
+
