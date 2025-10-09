@@ -1,11 +1,34 @@
 import pytest
 from unittest.mock import patch
 from sqlalchemy.exc import SQLAlchemyError
-from app.models import Todo, db
+from app import create_app
+from app.models import db, Todo
 
-# ---------------------------------------------------------------------------
-# 1.1 TestAppFactory
-# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def app():
+    """Create and configure a test app instance"""
+    app = create_app('testing')
+
+    with app.app_context():
+        db.create_all()
+        yield app
+        db.session.remove()
+        db.drop_all()
+
+
+@pytest.fixture
+def client(app):
+    """Create a test client"""
+    return app.test_client()
+
+
+@pytest.fixture
+def runner(app):
+    """Create a test CLI runner"""
+    return app.test_cli_runner()
+
+
 class TestAppFactory:
     """Test application factory and configuration"""
 
@@ -50,11 +73,8 @@ class TestAppFactory:
         app.config['TESTING'] = True
 
 
-# ---------------------------------------------------------------------------
-# 1.2 TestHealthCheck
-# ---------------------------------------------------------------------------
 class TestHealthCheck:
-    """Test health check API"""
+    """Test health check endpoint"""
 
     def test_health_endpoint_success(self, client):
         """Test health check returns 200 when database is healthy"""
@@ -77,9 +97,6 @@ class TestHealthCheck:
         assert 'error' in data
 
 
-# ---------------------------------------------------------------------------
-# 1.3 TestTodoModel
-# ---------------------------------------------------------------------------
 class TestTodoModel:
     """Test Todo model methods"""
 
@@ -110,9 +127,6 @@ class TestTodoModel:
             assert 'Test Todo' in repr_str
 
 
-# ---------------------------------------------------------------------------
-# 1.4 TestTodoAPI
-# ---------------------------------------------------------------------------
 class TestTodoAPI:
     """Test Todo CRUD operations"""
 
@@ -170,6 +184,7 @@ class TestTodoAPI:
     def test_create_todo_database_error(self, mock_commit, client):
         """Test database error during todo creation"""
         mock_commit.side_effect = SQLAlchemyError('Database error')
+
         response = client.post('/api/todos', json={'title': 'Test'})
         assert response.status_code == 500
         data = response.get_json()
@@ -214,6 +229,7 @@ class TestTodoAPI:
         data = response.get_json()
         assert data['success'] is True
         assert data['data']['title'] == 'Updated Title'
+        assert 'message' in data
 
     def test_update_todo_description(self, client, app):
         """Test updating todo description"""
@@ -270,20 +286,25 @@ class TestTodoAPI:
         data = response.get_json()
         assert data['success'] is False
 
-    @patch('app.routes.db.session.commit')
-    def test_update_todo_database_error(self, mock_commit, client, app):
+    def test_update_todo_database_error(self, client, app):
         """Test database error during todo update"""
+        # สร้าง todo ก่อน
         with app.app_context():
             todo = Todo(title='Test')
             db.session.add(todo)
             db.session.commit()
             todo_id = todo.id
 
-        mock_commit.side_effect = SQLAlchemyError('Database error')
-        response = client.put(f'/api/todos/{todo_id}', json={'title': 'New'})
-        assert response.status_code == 500
-        data = response.get_json()
-        assert data['success'] is False
+        # Mock เฉพาะตอน update
+        with patch('app.routes.db.session.commit') as mock_commit:
+            mock_commit.side_effect = SQLAlchemyError('Database error')
+            response = client.put(
+                f'/api/todos/{todo_id}',
+                json={
+                    'title': 'New'})
+            assert response.status_code == 500
+            data = response.get_json()
+            assert data['success'] is False
 
     def test_delete_todo(self, client, app):
         """Test deleting a todo"""
@@ -297,6 +318,7 @@ class TestTodoAPI:
         assert response.status_code == 200
         data = response.get_json()
         assert data['success'] is True
+        assert 'message' in data
 
         # Verify it's deleted
         response = client.get(f'/api/todos/{todo_id}')
@@ -310,7 +332,7 @@ class TestTodoAPI:
         assert data['success'] is False
 
     @patch('app.routes.db.session.delete')
-    def test_delete_todo_database_error(self, mock_commit, client, app):
+    def test_delete_todo_database_error(self, mock_delete, client, app):
         """Test database error during todo deletion"""
         with app.app_context():
             todo = Todo(title='Test')
@@ -318,7 +340,8 @@ class TestTodoAPI:
             db.session.commit()
             todo_id = todo.id
 
-        mock_commit.side_effect = SQLAlchemyError('Database error')
+        mock_delete.side_effect = SQLAlchemyError('Database error')
+
         response = client.delete(f'/api/todos/{todo_id}')
         assert response.status_code == 500
         data = response.get_json()
@@ -327,7 +350,11 @@ class TestTodoAPI:
     def test_get_all_todos_ordered(self, client, app):
         """Test getting all todos returns them in correct order"""
         with app.app_context():
-            todos = [Todo(title=f'Todo {i}') for i in range(1, 4)]
+            todos = [
+                Todo(title='Todo 1'),
+                Todo(title='Todo 2'),
+                Todo(title='Todo 3')
+            ]
             db.session.add_all(todos)
             db.session.commit()
 
@@ -336,27 +363,28 @@ class TestTodoAPI:
         data = response.get_json()
         assert data['success'] is True
         assert data['count'] == 3
+        # Should be ordered by created_at desc (newest first)
         assert data['data'][0]['title'] == 'Todo 3'
         assert data['data'][2]['title'] == 'Todo 1'
 
     @patch('app.routes.Todo.query')
     def test_get_todos_database_error(self, mock_query, client):
         """Test database error when getting todos"""
-        mock_query.order_by.return_value.all.side_effect = SQLAlchemyError('DB Error')
+        mock_query.order_by.return_value.all.side_effect = SQLAlchemyError(
+            'DB Error')
+
         response = client.get('/api/todos')
         assert response.status_code == 500
         data = response.get_json()
         assert data['success'] is False
 
 
-# ---------------------------------------------------------------------------
-# 1.5 TestIntegration
-# ---------------------------------------------------------------------------
 class TestIntegration:
     """Integration tests for complete workflows"""
 
     def test_complete_todo_lifecycle(self, client):
         """Test complete CRUD workflow"""
+        # Create
         create_response = client.post('/api/todos', json={
             'title': 'Integration Test Todo',
             'description': 'Testing full lifecycle'
@@ -364,10 +392,13 @@ class TestIntegration:
         assert create_response.status_code == 201
         todo_id = create_response.get_json()['data']['id']
 
+        # Read
         read_response = client.get(f'/api/todos/{todo_id}')
         assert read_response.status_code == 200
-        assert read_response.get_json()['data']['title'] == 'Integration Test Todo'
+        assert read_response.get_json(
+        )['data']['title'] == 'Integration Test Todo'
 
+        # Update
         update_response = client.put(f'/api/todos/{todo_id}', json={
             'title': 'Updated Integration Test',
             'completed': True
@@ -377,32 +408,42 @@ class TestIntegration:
         assert updated_data['title'] == 'Updated Integration Test'
         assert updated_data['completed'] is True
 
+        # Delete
         delete_response = client.delete(f'/api/todos/{todo_id}')
         assert delete_response.status_code == 200
 
+        # Verify deletion
         verify_response = client.get(f'/api/todos/{todo_id}')
         assert verify_response.status_code == 404
 
     def test_multiple_todos_workflow(self, client):
         """Test working with multiple todos"""
+        # Create multiple todos
         for i in range(5):
             response = client.post('/api/todos', json={
-                'title': f'Todo {i+1}',
-                'completed': i % 2 == 0
+                'title': f'Todo {i + 1}',
+                'completed': i % 2 == 0  # Alternate completed status
             })
             assert response.status_code == 201
 
+        # Get all and verify count
         response = client.get('/api/todos')
         assert response.status_code == 200
         data = response.get_json()
         assert data['count'] == 5
 
+        # Update some
         todo_id = data['data'][0]['id']
-        response = client.put(f'/api/todos/{todo_id}', json={'completed': True})
+        response = client.put(
+            f'/api/todos/{todo_id}',
+            json={
+                'completed': True})
         assert response.status_code == 200
 
+        # Delete some
         response = client.delete(f'/api/todos/{todo_id}')
         assert response.status_code == 200
 
+        # Verify count decreased
         response = client.get('/api/todos')
         assert response.get_json()['count'] == 4
