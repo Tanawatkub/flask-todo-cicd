@@ -13,6 +13,6 @@ def home():
 
 
 if __name__ == "__main__":
-    # ✅ ใช้พอร์ตจาก environment variable (Render จะส่งมาให้)
+    # ✅ Render จะส่งค่าพอร์ตจริงมาในตัวแปร PORT
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
