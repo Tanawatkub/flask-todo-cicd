@@ -1,17 +1,27 @@
 import logging
-import sys
+from logging.config import dictConfig
 
-def setup_logging(app):
-    """Configure application logging"""
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.INFO)
-    
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    handler.setFormatter(formatter)
-    
-    app.logger.addHandler(handler)
-    app.logger.setLevel(logging.INFO)
-    
-    return app.logger
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+        },
+    },
+    "root": {
+        "level": "INFO",
+        "handlers": ["console"],
+    },
+}
+
+def init_logging():
+    """Initialize logging configuration"""
+    dictConfig(LOGGING)
+    logging.getLogger().info("Logging initialized successfully.")
