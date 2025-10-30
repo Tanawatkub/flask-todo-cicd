@@ -16,15 +16,16 @@ def create_app(config_name=None):
     config[config_name].init_app(app)
 
     # ---------------- Enable CORS ----------------
-    # ✅ ปรับ origins ให้รองรับโดเมนของคุณเอง (GitHub Pages หรือ Localhost)
+    # ✅ รองรับ Localhost, Network IP, GitHub Pages และ Render
     CORS(app, resources={
         r"/api/*": {
             "origins": [
-                "http://localhost:3000",           # Next.js dev server
-                "http://127.0.0.1:3000",           # อีกหนึ่งกรณี localhost
-                "http://localhost:5000",           # Flask local server
-                "https://*.github.io",              # รองรับทุก repo ของ GitHub Pages
-                "https://tanawatputta.github.io"    # ✅ แก้เป็นโดเมนของคุณจริง
+                "http://localhost:3000",             # Next.js dev server
+                "http://127.0.0.1:3000",             # loopback
+                "http://192.168.1.103:3000",         # ✅ เครื่องใน network ของคุณ
+                "https://*.github.io",               # GitHub Pages (ทุก repo)
+                "https://tanawatputta.github.io",    # ✅ repo ของคุณเอง
+                "https://flask-todo-app-3r5b.onrender.com"  # ✅ backend บน Render
             ],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type"],
