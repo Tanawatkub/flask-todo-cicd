@@ -20,12 +20,11 @@ def create_app(config_name=None):
     CORS(app, resources={
         r"/api/*": {
             "origins": [
-                "http://localhost:3000",             # Next.js dev server
-                "http://127.0.0.1:3000",             # loopback
-                "http://192.168.1.103:3000",         # ✅ เครื่องใน network ของคุณ
-                "https://*.github.io",               # GitHub Pages (ทุก repo)
-                "https://tanawatputta.github.io",    # ✅ repo ของคุณเอง
-                "https://flask-todo-app-3r5b.onrender.com"  # ✅ backend บน Render
+                "http://localhost:3000",             # สำหรับ dev local
+                "http://127.0.0.1:3000",
+                "http://192.168.1.103:3000",         # ✅ Network IP
+                "https://tanawatputta.github.io",    # ✅ GitHub Pages
+                "https://flask-todo-app-3r5b.onrender.com"  # ✅ Render backend
             ],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type"],
