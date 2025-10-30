@@ -4,33 +4,21 @@ import os
 
 app = Flask(__name__)
 
-# ✅ เปิดอนุญาตทุก origin ที่จำเป็น
-CORS(app, resources={
-    r"/api/*": {
-        "origins": [
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "https://tanawatputta.github.io",
-            "https://*.github.io",
-            "https://flask-todo-app-3r5b.onrender.com"
-        ],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
+# ✅ ปรับ CORS ให้รองรับทุกอย่างชัดเจน
+CORS(app, resources={r"/api/*": {"origins": "*"}},
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
 # ---------------------------
-# ✅ ROUTES
+# ROUTES
 # ---------------------------
-
 @app.route("/api/health")
 def health():
     return jsonify({"status": "healthy"}), 200
 
-
 @app.route("/api/todos", methods=["GET"])
 def get_todos():
-    """ส่ง mock data กลับให้ frontend"""
     todos = [
         {"id": 1, "title": "เขียนรายงาน Flask CI/CD", "description": "ส่งอาจารย์ Pongkiat", "done": False},
         {"id": 2, "title": "ออกแบบหน้า Next.js", "description": "Todo list frontend", "done": True},
@@ -38,10 +26,8 @@ def get_todos():
     ]
     return jsonify(todos), 200
 
-
 @app.route("/api/todos", methods=["POST"])
 def create_todo():
-    """รับข้อมูลจาก frontend แล้วส่งกลับ mock id"""
     data = request.get_json()
     new_todo = {
         "id": 999,
@@ -51,14 +37,21 @@ def create_todo():
     }
     return jsonify(new_todo), 201
 
+@app.route("/api/todos/<int:todo_id>", methods=["DELETE"])
+def delete_todo(todo_id):
+    return jsonify({"deleted": todo_id}), 200
+
+@app.route("/api/todos/<int:todo_id>", methods=["PUT"])
+def update_todo(todo_id):
+    data = request.get_json()
+    return jsonify({"updated": todo_id, "data": data}), 200
 
 @app.route("/")
 def home():
     return jsonify({"message": "Flask Todo API is running!"}), 200
 
-
 # ---------------------------
-# ✅ MAIN ENTRY POINT
+# MAIN ENTRY POINT
 # ---------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
